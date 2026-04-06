@@ -18,7 +18,7 @@ export default function SignOutButton() {
       type="button"
       onClick={handleSignOut}
       disabled={isLoading}
-      className="w-full rounded-full border border-zinc-700 bg-zinc-900 px-5 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.35em] text-zinc-200 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+      className="w-full rounded-full border border-[var(--card-border-strong)] bg-[var(--card-alt)] px-5 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.35em] text-[var(--foreground)] transition hover:bg-[var(--card)] disabled:cursor-not-allowed disabled:opacity-60"
     >
       {isLoading ? "Signing out..." : "Sign out"}
     </button>

@@ -2,12 +2,10 @@
 
 import Link from "next/link";
 import AccountMenu from "@/app/components/AccountMenu";
+import ThemeToggle from "@/app/components/ThemeToggle";
 
 const NAV_ITEMS = [
-  { href: "/overview", label: "Overview", key: "overview" },
-  { href: "/prompt-chains", label: "Prompt Chains", key: "prompt-chains" },
-  { href: "/steps", label: "Steps", key: "steps" },
-  { href: "/test", label: "Test Runs", key: "test" },
+  { href: "/humor-flavor", label: "Humor Flavors", key: "humor-flavor" },
 ] as const;
 
 type SidebarNavProps = {
@@ -22,8 +20,8 @@ export default function SidebarNav({
   children,
 }: SidebarNavProps) {
   return (
-    <div className="min-h-screen bg-black text-zinc-50">
-      <aside className="fixed left-0 top-0 flex h-screen w-56 flex-col border-r border-zinc-900 bg-black px-6 pb-8 pt-10">
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
+      <aside className="fixed left-0 top-0 flex h-screen w-56 flex-col border-r border-[var(--card-border)] bg-[var(--sidebar)] px-6 pb-8 pt-10">
         <nav className="space-y-3">
           {NAV_ITEMS.map((item) => {
             const isActive = item.key === activeKey;
@@ -33,8 +31,8 @@ export default function SidebarNav({
                 href={item.href}
                 className={`block w-full rounded-full px-6 py-3 text-left text-sm font-semibold tracking-wide transition ${
                   isActive
-                    ? "border border-zinc-700 bg-zinc-900 text-white shadow-[0_0_0_1px_rgba(63,63,70,0.7)]"
-                    : "border border-zinc-800 bg-zinc-950 text-zinc-200 hover:bg-zinc-900"
+                    ? "border border-[var(--card-border-strong)] bg-[var(--card-alt)] text-[var(--foreground)] shadow-[0_0_0_1px_rgba(63,63,70,0.35)]"
+                    : "border border-[var(--card-border)] bg-[var(--card)] text-[var(--muted)] hover:bg-[var(--card-alt)]"
                 }`}
               >
                 {item.label}
@@ -43,7 +41,8 @@ export default function SidebarNav({
           })}
         </nav>
 
-        <div className="mt-auto pb-2 pt-10">
+        <div className="mt-auto space-y-3 pb-2 pt-10">
+          <ThemeToggle />
           <AccountMenu displayName={displayName} />
         </div>
       </aside>

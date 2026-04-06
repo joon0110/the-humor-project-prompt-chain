@@ -44,7 +44,7 @@ export default function GoogleSignInButton({
         type="button"
         onClick={handleSignIn}
         disabled={isLoading}
-        className="group flex w-full items-center gap-3 rounded-full border border-zinc-500/30 bg-zinc-800/90 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-zinc-900/40 backdrop-blur transition hover:bg-zinc-700/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 disabled:cursor-not-allowed disabled:opacity-60"
+        className="group flex w-full items-center gap-3 rounded-full border border-[var(--card-border)] bg-[var(--card-alt)] px-5 py-3 text-sm font-semibold text-[var(--foreground)] shadow-lg shadow-black/20 backdrop-blur transition hover:bg-[var(--card)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-60"
       >
         <span className="grid h-9 w-9 place-items-center rounded-md bg-white/95 shadow-sm">
           <svg aria-hidden="true" viewBox="0 0 48 48" className="h-6 w-6">
@@ -71,7 +71,7 @@ export default function GoogleSignInButton({
         </span>
       </button>
       {errorMessage && (
-        <p className="max-w-xs text-xs text-red-200">
+        <p className="max-w-xs text-xs text-[var(--danger)]">
           Sign-in failed: {errorMessage}
         </p>
       )}

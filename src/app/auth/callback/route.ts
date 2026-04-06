@@ -30,11 +30,11 @@ export async function GET(request: Request) {
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("is_superadmin")
+      .select("is_superadmin,is_matrix_admin")
       .eq("id", data.user?.id ?? "")
       .single();
 
-    if (profileError || !profile?.is_superadmin) {
+    if (profileError || (!profile?.is_superadmin && !profile?.is_matrix_admin)) {
       await supabase.auth.signOut();
       return NextResponse.redirect(new URL("/login?error=admin", request.url));
     }

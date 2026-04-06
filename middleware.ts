@@ -75,11 +75,14 @@ export async function middleware(request: NextRequest) {
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("is_superadmin")
+        .select("is_superadmin,is_matrix_admin")
         .eq("id", userId)
         .single();
 
-      if (profileError || !profile?.is_superadmin) {
+      if (
+        profileError ||
+        (!profile?.is_superadmin && !profile?.is_matrix_admin)
+      ) {
         await supabase.auth.signOut();
         return redirectWithCookies(request, response, "/login?error=admin");
       }
@@ -138,11 +141,11 @@ export async function middleware(request: NextRequest) {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("is_superadmin")
+    .select("is_superadmin,is_matrix_admin")
     .eq("id", userId)
     .single();
 
-  if (profileError || !profile?.is_superadmin) {
+  if (profileError || (!profile?.is_superadmin && !profile?.is_matrix_admin)) {
     await supabase.auth.signOut();
     return redirectWithCookies(request, response, "/login?error=admin");
   }
