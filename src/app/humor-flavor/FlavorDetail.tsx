@@ -113,6 +113,61 @@ function resolveCaptionImage(
   return Array.isArray(images) ? images[0] ?? null : images;
 }
 
+function extractJokesFromContent(content: string | null) {
+  if (!content) return [] as string[];
+  const trimmed = content.trim();
+  if (!trimmed) return [] as string[];
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((item) => {
+            if (typeof item === "string") return item.trim();
+            if (item && typeof item.text === "string") return item.text.trim();
+            return "";
+          })
+          .filter(Boolean);
+      }
+      if (parsed && typeof parsed === "object") {
+        const jokes: string[] = [];
+        const finalJoke = parsed.final_joke ?? parsed.finalJoke ?? parsed.joke;
+        if (typeof finalJoke === "string") jokes.push(finalJoke.trim());
+        if (finalJoke && typeof finalJoke.text === "string") {
+          jokes.push(finalJoke.text.trim());
+        }
+        const backup = parsed.backup_jokes ?? parsed.backupJokes ?? parsed.jokes;
+        if (Array.isArray(backup)) {
+          backup.forEach((item) => {
+            if (typeof item === "string") jokes.push(item.trim());
+            if (item && typeof item.text === "string") {
+              jokes.push(item.text.trim());
+            }
+          });
+        }
+        const captions = parsed.captions ?? parsed.outputs;
+        if (Array.isArray(captions)) {
+          captions.forEach((item) => {
+            if (typeof item === "string") jokes.push(item.trim());
+            if (item && typeof item.text === "string") {
+              jokes.push(item.text.trim());
+            }
+          });
+        }
+        if (jokes.length > 0) {
+          return jokes.filter(Boolean);
+        }
+        if (typeof parsed.text === "string") {
+          return [parsed.text.trim()].filter(Boolean);
+        }
+      }
+    } catch {
+      // fall back to raw content
+    }
+  }
+  return [content];
+}
+
 export default function FlavorDetail({ flavorId }: { flavorId: number }) {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const router = useRouter();
@@ -1061,16 +1116,29 @@ export default function FlavorDetail({ flavorId }: { flavorId: number }) {
                     No captions returned.
                   </div>
                 ) : (
-                  <ul className="mt-3 space-y-2 text-sm text-[var(--foreground)]">
-                    {run.captions.map((caption) => (
-                      <li
-                        key={caption.id}
-                        className="rounded-lg border border-[var(--card-border)] bg-[var(--card)] p-3"
-                      >
-                        {caption.content ?? "Untitled caption"}
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="mt-3 space-y-2 text-sm text-[var(--foreground)]">
+                    {run.captions.flatMap((caption) => {
+                      const jokes = extractJokesFromContent(caption.content);
+                      if (jokes.length === 0) {
+                        return (
+                          <div
+                            key={`${caption.id}-empty`}
+                            className="rounded-lg border border-[var(--card-border)] bg-[var(--card)] p-3"
+                          >
+                            Untitled caption
+                          </div>
+                        );
+                      }
+                      return jokes.map((joke, index) => (
+                        <div
+                          key={`${caption.id}-${index}`}
+                          className="rounded-lg border border-[var(--card-border)] bg-[var(--card)] p-3"
+                        >
+                          {joke}
+                        </div>
+                      ));
+                    })}
+                  </div>
                 )}
               </div>
             ))}
