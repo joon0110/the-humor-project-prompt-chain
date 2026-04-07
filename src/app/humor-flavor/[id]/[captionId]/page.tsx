@@ -255,7 +255,7 @@ export default async function CaptionDetailPage({
                         <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted-strong)]">
                           System prompt
                         </div>
-                        <div className="mt-2 whitespace-pre-wrap text-sm text-[var(--foreground)]">
+                        <div className="mt-2 whitespace-pre-wrap break-words text-sm text-[var(--foreground)]">
                           {response.llm_system_prompt ?? "-"}
                         </div>
                       </div>
@@ -263,7 +263,7 @@ export default async function CaptionDetailPage({
                         <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted-strong)]">
                           User prompt
                         </div>
-                        <div className="mt-2 whitespace-pre-wrap text-sm text-[var(--foreground)]">
+                        <div className="mt-2 whitespace-pre-wrap break-words text-sm text-[var(--foreground)]">
                           {response.llm_user_prompt ?? "-"}
                         </div>
                       </div>
@@ -273,7 +273,7 @@ export default async function CaptionDetailPage({
                       <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted-strong)]">
                         Model response
                       </div>
-                      <div className="mt-2 whitespace-pre-wrap text-sm text-[var(--foreground)]">
+                      <div className="mt-2 whitespace-pre-wrap break-words text-sm text-[var(--foreground)]">
                         {response.llm_model_response ?? "-"}
                       </div>
                     </div>

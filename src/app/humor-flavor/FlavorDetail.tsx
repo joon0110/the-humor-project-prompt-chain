@@ -666,7 +666,7 @@ export default function FlavorDetail({ flavorId }: { flavorId: number }) {
       </section>
 
       <div className="grid gap-6 lg:grid-cols-[1.05fr_1fr]">
-        <section className="rounded-2xl border border-[var(--card-border)] bg-[var(--card)] p-6">
+        <section className="min-w-0 overflow-x-hidden rounded-2xl border border-[var(--card-border)] bg-[var(--card)] p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.35em] text-[var(--muted-strong)]">
@@ -692,7 +692,7 @@ export default function FlavorDetail({ flavorId }: { flavorId: number }) {
             </div>
           )}
 
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 max-h-[520px] space-y-3 overflow-y-auto pr-2">
             {sortedSteps.length === 0 && (
               <div className="rounded-xl border border-dashed border-[var(--card-border)] bg-[var(--background)] p-4 text-sm text-[var(--muted)]">
                 No steps yet for this flavor.
@@ -774,7 +774,7 @@ export default function FlavorDetail({ flavorId }: { flavorId: number }) {
                     <div className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted-strong)]">
                       System prompt
                     </div>
-                    <div className="mt-1 whitespace-pre-wrap text-[var(--foreground)]">
+                    <div className="mt-1 whitespace-pre-wrap break-words text-[var(--foreground)]">
                       {step.llm_system_prompt ?? "-"}
                     </div>
                   </div>
@@ -782,7 +782,7 @@ export default function FlavorDetail({ flavorId }: { flavorId: number }) {
                     <div className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted-strong)]">
                       User prompt
                     </div>
-                    <div className="mt-1 whitespace-pre-wrap text-[var(--foreground)]">
+                    <div className="mt-1 whitespace-pre-wrap break-words text-[var(--foreground)]">
                       {step.llm_user_prompt ?? "-"}
                     </div>
                   </div>
@@ -792,7 +792,7 @@ export default function FlavorDetail({ flavorId }: { flavorId: number }) {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-[var(--card-border)] bg-[var(--card)] p-6">
+        <section className="min-w-0 rounded-2xl border border-[var(--card-border)] bg-[var(--card)] p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.35em] text-[var(--muted-strong)]">
