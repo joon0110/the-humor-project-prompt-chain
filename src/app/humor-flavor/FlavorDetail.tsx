@@ -80,6 +80,27 @@ type StepFormState = {
   userPrompt: string;
 };
 
+type DuplicateFlavorFormState = {
+  slug: string;
+  description: string;
+};
+
+type FlavorSlugRecord = {
+  slug: string | null;
+};
+
+type DuplicateStepRecord = {
+  order_by: number;
+  description: string | null;
+  llm_temperature: number | null;
+  llm_model_id: number;
+  llm_input_type_id: number;
+  llm_output_type_id: number;
+  humor_flavor_step_type_id: number;
+  llm_system_prompt: string | null;
+  llm_user_prompt: string | null;
+};
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_HUMOR_API_URL ?? "https://api.almostcrackd.ai";
 
@@ -168,12 +189,38 @@ function extractJokesFromContent(content: string | null) {
   return [content];
 }
 
+function buildUniqueCopyFlavorSlug(sourceSlug: string, existingSlugs: string[]) {
+  const copyBase = `${sourceSlug}-copy`;
+  const normalized = new Set(
+    existingSlugs
+      .map((slug) => slug.trim().toLowerCase())
+      .filter((slug) => slug.length > 0)
+  );
+
+  let candidate = copyBase;
+  let suffix = 2;
+  while (normalized.has(candidate.toLowerCase())) {
+    candidate = `${copyBase}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
+}
+
 export default function FlavorDetail({ flavorId }: { flavorId: number }) {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const router = useRouter();
 
   const [flavor, setFlavor] = useState<HumorFlavor | null>(null);
   const [flavorError, setFlavorError] = useState<string | null>(null);
+  const [duplicateForm, setDuplicateForm] = useState<DuplicateFlavorFormState>(
+    {
+      slug: "",
+      description: "",
+    }
+  );
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
+  const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
+  const [isDuplicatingFlavor, setIsDuplicatingFlavor] = useState(false);
 
   const [steps, setSteps] = useState<HumorFlavorStep[]>([]);
   const [stepForm, setStepForm] = useState<StepFormState>({
@@ -244,6 +291,145 @@ export default function FlavorDetail({ flavorId }: { flavorId: number }) {
     startTransition(() => {
       setFlavor((data as HumorFlavor) ?? null);
     });
+  }
+
+  async function loadAllFlavorSlugs() {
+    const { data, error } = await supabase
+      .from("humor_flavors")
+      .select("slug")
+      .returns<FlavorSlugRecord[]>();
+    if (error) {
+      throw new Error(error.message);
+    }
+    return (data ?? [])
+      .map((item) => item.slug?.trim() ?? "")
+      .filter((slug) => slug.length > 0);
+  }
+
+  async function handleOpenDuplicateModal() {
+    if (!flavor) {
+      setFlavorError("Flavor details are still loading. Try again.");
+      return;
+    }
+
+    const sourceSlug = flavor.slug.trim();
+    const defaultSlug = `${sourceSlug}-copy`;
+    setDuplicateError(null);
+    setDuplicateForm({
+      slug: defaultSlug,
+      description: flavor.description ?? "",
+    });
+    setIsDuplicateModalOpen(true);
+
+    try {
+      const allSlugs = await loadAllFlavorSlugs();
+      const suggestedSlug = buildUniqueCopyFlavorSlug(sourceSlug, allSlugs);
+      setDuplicateForm((prev) =>
+        prev.slug.trim().toLowerCase() === defaultSlug.toLowerCase()
+          ? { ...prev, slug: suggestedSlug }
+          : prev
+      );
+    } catch {
+      // Keep the default copy name if uniqueness lookup fails.
+    }
+  }
+
+  async function handleDuplicateFlavor(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setDuplicateError(null);
+
+    const slug = duplicateForm.slug.trim();
+    if (!slug) {
+      setDuplicateError("Flavor name is required.");
+      return;
+    }
+
+    setIsDuplicatingFlavor(true);
+    let newFlavorId: number | null = null;
+
+    try {
+      const allSlugs = await loadAllFlavorSlugs();
+      const normalizedSlug = slug.toLowerCase();
+      if (allSlugs.some((item) => item.toLowerCase() === normalizedSlug)) {
+        setDuplicateError("Flavor name must be unique. Choose another name.");
+        return;
+      }
+
+      const { data: newFlavor, error: newFlavorError } = await supabase
+        .from("humor_flavors")
+        .insert({
+          slug,
+          description: duplicateForm.description.trim() || null,
+        })
+        .select("id")
+        .single();
+      if (newFlavorError || !newFlavor?.id) {
+        throw new Error(newFlavorError?.message ?? "Failed to create flavor.");
+      }
+
+      newFlavorId = newFlavor.id;
+
+      const { data: sourceSteps, error: sourceStepsError } = await supabase
+        .from("humor_flavor_steps")
+        .select(
+          [
+            "order_by",
+            "description",
+            "llm_temperature",
+            "llm_model_id",
+            "llm_input_type_id",
+            "llm_output_type_id",
+            "humor_flavor_step_type_id",
+            "llm_system_prompt",
+            "llm_user_prompt",
+          ].join(",")
+        )
+        .eq("humor_flavor_id", flavorId)
+        .order("order_by")
+        .returns<DuplicateStepRecord[]>();
+      if (sourceStepsError) {
+        throw new Error(sourceStepsError.message);
+      }
+
+      const copiedSteps =
+        sourceSteps?.map((step) => ({
+          humor_flavor_id: newFlavor.id,
+          order_by: step.order_by,
+          description: step.description,
+          llm_temperature: step.llm_temperature,
+          llm_model_id: step.llm_model_id,
+          llm_input_type_id: step.llm_input_type_id,
+          llm_output_type_id: step.llm_output_type_id,
+          humor_flavor_step_type_id: step.humor_flavor_step_type_id,
+          llm_system_prompt: step.llm_system_prompt,
+          llm_user_prompt: step.llm_user_prompt,
+        })) ?? [];
+
+      if (copiedSteps.length > 0) {
+        const { error: copyStepsError } = await supabase
+          .from("humor_flavor_steps")
+          .insert(copiedSteps);
+        if (copyStepsError) {
+          throw new Error(copyStepsError.message);
+        }
+      }
+
+      setIsDuplicateModalOpen(false);
+      router.push(`/humor-flavor/${newFlavor.id}`);
+    } catch (error) {
+      if (newFlavorId !== null) {
+        await supabase
+          .from("humor_flavor_steps")
+          .delete()
+          .eq("humor_flavor_id", newFlavorId);
+        await supabase.from("humor_flavors").delete().eq("id", newFlavorId);
+      }
+      const message =
+        error instanceof Error ? error.message : "Failed to duplicate flavor.";
+      setDuplicateError(message);
+    } finally {
+      setIsDuplicatingFlavor(false);
+    }
   }
 
   async function loadLookups() {
@@ -648,6 +834,13 @@ export default function FlavorDetail({ flavorId }: { flavorId: number }) {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleOpenDuplicateModal}
+              className="rounded-full border border-[var(--card-border)] bg-[var(--card-alt)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--foreground)]"
+            >
+              Duplicate
+            </button>
             <button
               type="button"
               onClick={() => router.push("/humor-flavor")}
@@ -1232,6 +1425,101 @@ export default function FlavorDetail({ flavorId }: { flavorId: number }) {
           </div>
         </section>
       </div>
+
+      {isDuplicateModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6 py-8"
+          onClick={() => {
+            if (!isDuplicatingFlavor) {
+              setIsDuplicateModalOpen(false);
+            }
+          }}
+        >
+          <div
+            className="w-full max-w-3xl rounded-2xl border border-[var(--card-border)] bg-[var(--card)] p-8 shadow-[0_20px_60px_rgba(0,0,0,0.4)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.35em] text-[var(--muted-strong)]">
+                  Duplicate Flavor
+                </div>
+                <h3 className="mt-2 text-2xl font-semibold">
+                  Create a copied flavor
+                </h3>
+                <p className="mt-2 text-sm text-[var(--muted)]">
+                  Copies this flavor and all of its steps.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDuplicateModalOpen(false)}
+                disabled={isDuplicatingFlavor}
+                className="rounded-full border border-[var(--card-border)] bg-[var(--card-alt)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--foreground)] disabled:opacity-60"
+              >
+                Close
+              </button>
+            </div>
+
+            {duplicateError && (
+              <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-[var(--danger)]">
+                {duplicateError}
+              </div>
+            )}
+
+            <form className="mt-6 grid gap-4" onSubmit={handleDuplicateFlavor}>
+              <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted-strong)]">
+                Flavor name
+                <input
+                  value={duplicateForm.slug}
+                  onChange={(event) =>
+                    setDuplicateForm((prev) => ({
+                      ...prev,
+                      slug: event.target.value,
+                    }))
+                  }
+                  className="mt-2 w-full rounded-xl border border-[var(--card-border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                  placeholder="original-flavor-copy"
+                />
+              </label>
+
+              <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted-strong)]">
+                Description
+                <textarea
+                  value={duplicateForm.description}
+                  onChange={(event) =>
+                    setDuplicateForm((prev) => ({
+                      ...prev,
+                      description: event.target.value,
+                    }))
+                  }
+                  rows={6}
+                  className="mt-2 w-full resize-none rounded-xl border border-[var(--card-border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                  placeholder="Description for the copied flavor"
+                />
+              </label>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={isDuplicatingFlavor}
+                  className="rounded-full border border-[var(--card-border-strong)] bg-[var(--card-alt)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--foreground)] disabled:opacity-60"
+                >
+                  {isDuplicatingFlavor ? "Duplicating..." : "Duplicate flavor"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsDuplicateModalOpen(false)}
+                  disabled={isDuplicatingFlavor}
+                  className="rounded-full border border-transparent px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)] disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
